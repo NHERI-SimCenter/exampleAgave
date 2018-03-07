@@ -1,0 +1,75 @@
+{
+  "available": true,
+  "default": false,
+  "description": "Stampede2 ",
+  "environment": null,
+  "executionType": "HPC",
+  "globalDefault": false,
+  "id": "designsafe.tg457427.exec.stampede2",
+  "maxSystemJobs": 50,
+  "maxSystemJobsPerUser": 4,
+  "name": "Stampede2 SLURM tg457427 Execution Host",
+  "queues": [
+    {
+      "maxJobs": 1,
+      "maxMemoryPerNode": 96,
+      "default": false,
+      "maxRequestedTime": "02:00:00",
+      "name": "development",
+      "description": null,
+      "maxNodes": 4,
+      "maxProcessorsPerNode": 272,
+      "mappedName": null,
+      "maxUserJobs": 1,
+      "customDirectives": "-A TG-ENG150032 "
+    },
+    {
+      "maxJobs": 50,
+      "maxMemoryPerNode": 96,
+      "default": true,
+      "maxRequestedTime": "48:00:00",
+      "name": "normal",
+      "description": null,
+      "maxNodes": 256,
+      "maxProcessorsPerNode": 17048,
+      "mappedName": null,
+      "maxUserJobs": 5,
+      "customDirectives": "-A TG-ENG150032 "
+    }
+  ],
+  "public": true,
+  "scheduler": "SLURM",
+  "scratchDir": "/scratch/00477/tg457427",
+  "site":"tacc.utexas.edu",
+  "startupScript": "./bashrc",
+  "status": "UP",
+  "storage": {
+    "proxy": null,
+    "protocol": "SFTP",
+    "mirror": false,
+    "port": 22,
+    "auth": {
+      "username":"tg457427",
+      "type": "SSHKEYS",
+      "privateKey": "PROVIDE YOUR OWN",
+      "publicKey": "PROVIDE YOUR OWN",
+    },
+    "host": "stampede2.tacc.utexas.edu",
+    "rootDir": "/",
+    "homeDir": "/scratch/00477/tg457427"
+  },
+  "type": "EXECUTION",  
+  "workDir": "WORK=/work/00477/tg457427/stampede2",
+  "login": {
+    "proxy": null,
+    "protocol": "SSH",
+    "port": 22,
+    "auth": {
+      "type": "SSHKEYS",
+      "username":"tg457427",
+    "privateKey": "PROVIDE YOUR OWN",
+    "publicKey": "PROVIDE YOUR OWN",
+    },
+    "host": "stampede2.tacc.utexas.edu"
+  }
+}
