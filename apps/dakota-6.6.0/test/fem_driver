@@ -1,0 +1,3 @@
+dprepro params.in SimCenterParams.template SimCenterParamIN.ops
+/home1/00477/tg457427/bin/OpenSees SimCenterInput.ops >> ops.out
+python postprocess.py Node_3_Disp

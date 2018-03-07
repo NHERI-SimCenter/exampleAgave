@@ -1,0 +1,25 @@
+{
+    "name": "dakota demo",
+    "appId": "dakota-6.6.0",
+    "maxRunTime": "00:01:00",
+    "memoryPerNode": "1GB",
+    "nodeCount": 1,
+    "processorsPerNode": 8,
+    "requestedTime": "00:10:00",
+    "archive": true,
+    "archiveSystem":"designsafe.storage.default",
+    "parameters" : {
+      "inputFile":"dakota.in",
+      "driverFile":"fem_driver",
+      "modules":"petsc"
+    },
+    "inputs": {
+      "inputDirectory": "agave://designsafe.storage.default/tg457427/testDakota"
+    },
+    "notifications": [
+      {
+        "url" : "fmckenna@berkeley.edu",
+        "event": "*"
+      }
+    ]
+}
