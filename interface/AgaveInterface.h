@@ -50,8 +50,11 @@ public:
     AgaveInterface(){};
     virtual ~AgaveInterface(){};
 
-    // methhod to login
-    virtual bool login(const QString &login, const QString &password) =0;
+    // methods to login/logout
+    virtual bool login() =0;
+    virtual bool logout() =0;
+    virtual bool isLoggedIn() =0;
+
 
     // methods needed for file/dir operations .. return success or failure
     //   note: uploadFile() may be needed (uploadDir could compress local, send and uncompress)
@@ -59,6 +62,7 @@ public:
     virtual bool uploadDirectory(const QString &local, const QString &remote) =0;
     virtual bool removeDirectory(const QString &remote) =0;
     virtual bool downloadFile(const QString &remote, const QString &local) =0;
+    virtual QString getHomeDirPath(void) =0;
 
     // methods needed to start a job .. returns jobID in a string
     virtual QString startJob(const QString &jobDescription) =0;

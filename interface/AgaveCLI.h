@@ -42,23 +42,34 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 // Purpose: To interface with Agave through the command line interface routines. This
 // requires that these routines be downloaded and installled on user desktop/laptop.
 
+#include <QObject>
 #include "AgaveInterface.h"
 
 class QProcess;
+class QWidget;
+class QLineEdit;
 
-class AgaveCLI : public AgaveInterface
+typedef void (*errorFunc)(const QString &message);
+
+class AgaveCLI : public QObject, public AgaveInterface
 {
+        Q_OBJECT
+
 public:
-    AgaveCLI();
+
+    explicit AgaveCLI(errorFunc =0, QObject *parent = nullptr);
     ~AgaveCLI();
 
-    // methhod to login
-    bool login(const QString &login, const QString &password);
+    // method to login
+    bool login();
+    bool logout();
+    bool isLoggedIn();
 
     // methods needed for file/dir operations
     bool uploadDirectory(const QString &local, const QString &remote);
     bool removeDirectory(const QString &remote);
     bool downloadFile(const QString &remote, const QString &local);
+    virtual QString getHomeDirPath(void);
 
     // methods needed to start a job
     QString startJob(const QString &jobDescription);
@@ -70,13 +81,27 @@ public:
     QString getJobStatus(const QString &jobID);
     bool deleteJob(const QString &jobID);
 
+signals:
+
+public slots:
+    void loginSubmitButtonClicked(void);
+
 private:
     bool invokeAgaveCLI(const QString & command);
+    bool login(const QString &login, const QString &password);
+     void myError(const QString &msg);
 
    // int currentInt;
     QString uniqueFileName1;
     QString uniqueFileName2;
     QProcess *proc;
+    bool loggedInFlag;
+
+    QWidget *loginWindow;
+    QLineEdit *nameLineEdit;
+    QLineEdit *passwordLineEdit;
+    int numTries;
+    errorFunc errorFunction;
 };
 
 #endif // AGAVE_CLI_H

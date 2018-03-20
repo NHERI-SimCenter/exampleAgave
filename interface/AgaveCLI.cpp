@@ -53,15 +53,29 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <iterator>
 #include <string>
 
+#include <QWindow>
+#include <QGridLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QStringList>
+
 #include <QUuid>
 
 using namespace std;
 
-static void myError(QString errorMessage) {
-    qDebug() << errorMessage;
+void
+AgaveCLI::myError(const QString  &msg) {
+
+  if (errorFunction != 0)
+      (*errorFunction)(msg);
+  else
+      qDebug() << msg;
 }
 
-AgaveCLI::AgaveCLI()
+
+AgaveCLI::AgaveCLI(errorFunc func, QObject *parent)
+  :QObject(parent), loggedInFlag(false), errorFunction(func)
 {
     //
     // for operation the class needs two temporary files to function
@@ -99,8 +113,28 @@ AgaveCLI::AgaveCLI()
   QString strUnique2 = uniqueName2.toString();
   uniqueFileName2 = strUnique2.mid(1,36);
 
+   proc = new QProcess();
 
-    proc = new QProcess();
+   loginWindow = new QWidget();
+   QGridLayout *loginLayout = new QGridLayout();
+   QLabel *nameLabel = new QLabel();
+   nameLabel->setText("username:");
+   QLabel *passwordLabel = new QLabel();
+   passwordLabel->setText("password:");
+   nameLineEdit = new QLineEdit();
+   passwordLineEdit = new QLineEdit();
+   passwordLineEdit->setEchoMode(QLineEdit::Password);
+   QPushButton *submitButton = new QPushButton();
+   submitButton->setText("Login");
+   loginLayout->addWidget(nameLabel,0,0);
+   loginLayout->addWidget(nameLineEdit,0,1);
+   loginLayout->addWidget(passwordLabel,1,0);
+   loginLayout->addWidget(passwordLineEdit,1,1);
+   loginLayout->addWidget(submitButton,2,2);
+   loginWindow->setLayout(loginLayout);
+
+   connect(submitButton,SIGNAL(clicked(bool)),this,SLOT(loginSubmitButtonClicked()));
+   //loginWindow->show();
 }
 
 AgaveCLI::~AgaveCLI()
@@ -113,12 +147,83 @@ AgaveCLI::~AgaveCLI()
     file1.remove();
     QFile file2 (uniqueFileName2);
     file2.remove();
+
+    delete loginWindow;
+
+    delete proc;
 }
+
+void
+AgaveCLI::loginSubmitButtonClicked(void) {
+    //int numTries = 0;
+    int maxNumTries = 3;
+
+    if (loggedInFlag == false && numTries < maxNumTries) {
+        QString login = nameLineEdit->text();
+        QString password = passwordLineEdit->text();
+        if (login.size() == 0) {
+              login = "no_username";
+        }
+        if (password.size() == 0)
+              password = "no_password";
+
+      loggedInFlag = this->login(login, password);
+      numTries++;
+    }
+    if (loggedInFlag == true || numTries >= maxNumTries)
+        loginWindow->hide();
+}
+
+bool 
+AgaveCLI::login()
+{
+  numTries = 0;
+  loginWindow->show();
+}
+
+bool
+AgaveCLI::logout()
+{
+    bool result = false;
+
+    //
+    // invoke the function by calling the cli externally
+    //
+
+    // put up something other than spinning wheel of death
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+
+    // call the external application
+#ifdef Q_OS_WIN
+    //QString command = QString("python ") + pySCRIPT + QString(" ") + tDirectory + QString(" ") + tmpDirectory;
+    //  proc->execute("cmd", QStringList() << "/C" << command);
+#else
+    QString command = QString("source $HOME/.bashrc; auth-tokens-reoke > ")  + uniqueFileName1;
+    //proc->execute("bash ", QStringList() << "-c" <<  command);
+    qDebug() << command;
+#endif
+    this->invokeAgaveCLI(command);
+    // wait till done  &then restore application to interactive state
+    proc->waitForStarted();
+    QApplication::restoreOverrideCursor();
+
+    loggedInFlag = false;
+    return true;
+
+}
+
+bool 
+AgaveCLI::isLoggedIn()
+{
+   qDebug() << "isLoggedIn: " << loggedInFlag;
+  return loggedInFlag;
+}
+
 
 bool 
 AgaveCLI::login(const QString &login, const QString &password)
 {
-    bool result = true;
+    bool result = false;
 
     //
     // invoke the function by calling the cli externally
@@ -148,17 +253,35 @@ AgaveCLI::login(const QString &login, const QString &password)
     // open results file
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-      result = false; qDebug() << "ERROR: COULD NOT OPEN RESULT";
+      result = false;
+      qDebug() << "ERROR: COULD NOT OPEN RESULT";
       return result;
     }
 
     // read results file & check for errors
     QString val;
-    val=file.readAll();  
+    val=file.readAll();
     file.close();
+
+    if (val.contains("Invalid Credentals") || val.isEmpty()) {
+       result = false;
+       this->myError("BAD username and/or password");
+    } else if (val.contains("successfully refreshed")) {
+       result = true;
+       this->myError("");
+    }
 
     return result;
 }
+
+
+QString
+AgaveCLI::getHomeDirPath(void){
+
+    QString result = QString("agave://designsafe.storage.default/") + nameLineEdit->text();
+    return result;
+}
+
 
 bool
 AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
@@ -173,12 +296,20 @@ AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
     // put up something other than spinning wheel of death
     QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
+    // for upload we need to remove he agave storage URL
+    QString storage("agave://designsafe.storage.default/");
+    QString remoteCleaned = remote;
+    remoteCleaned.remove(storage);
+
+     QString msg = QString("Uploading Directory: ") + local + QString(" to DesignSafe ,, might take awhile!");
+     this->myError(msg);
+
     // call the external application
 #ifdef Q_OS_WIN
     //QString command = QString("python ") + pySCRIPT + QString(" ") + tDirectory + QString(" ") + tmpDirectory;
     //  proc->execute("cmd", QStringList() << "/C" << command);
 #else
-    QString command = QString("source $HOME/.bashrc; files-upload -v -F ") + local + QString("  ") + remote + QString(" > ") + uniqueFileName1;
+    QString command = QString("source $HOME/.bashrc; files-upload -v -F ") + local + QString("  ") + remoteCleaned + QString(" > ") + uniqueFileName1;
     proc->execute("bash", QStringList() << "-c" <<  command);
     qDebug() << command;
 #endif
@@ -190,7 +321,8 @@ AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
     // open results file
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-      result = false; qDebug() << "ERROR: COULD NOT OPEN RESULT";
+      result = false;
+      this->myError("ERROR: COULD NOT RUN AGAVE-CLI COMMAND");
       return result;
     }
 
@@ -200,19 +332,14 @@ AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
     file.close();
 
     if (val.contains("Invalid Credentals")) {
-       result = false;
-       myError("ERROR: NEED TO LOGIN");
-       return result;
-    }
-    if (val.contains("does not exist")) {
+       result = false; 
+       myError("ERROR: YOU NEED TO LOGIN");
+    } else if (val.contains("does not exist")) {
        result = false;
        myError("ERROR: remote dir does not exist");
-       return result;
-    }
-    if (val.contains("Invalid authentication credentials")) {
+    } else if (val.contains("Invalid authentication credentials")) {
        result = false;
        myError("ERROR: user does not have access to remote dir");
-       return result;
     }
 
     return result;
@@ -223,6 +350,7 @@ bool
 AgaveCLI::removeDirectory(const QString &remote)
 {
     bool result = true;
+    myError("Removing Directory from DesignSafe");
 
     //
     // invoke the function by calling the cli externally
@@ -278,6 +406,7 @@ AgaveCLI::removeDirectory(const QString &remote)
        return result;
     }
 
+    myError("");
     return result;
 }
 
@@ -286,6 +415,8 @@ bool
 AgaveCLI::downloadFile(const QString &remote, const QString &local)
 {
     bool result = true;
+
+    myError("Downloading file from DesignSafe");
 
     //
     // invoke the function by calling the cli externally
@@ -346,6 +477,7 @@ AgaveCLI::downloadFile(const QString &remote, const QString &local)
        return result;
     }
 
+    myError("");
     return result;
 }
 
@@ -354,6 +486,7 @@ QString
 AgaveCLI::startJob(const QString &jobDescriptionFile)
 {
    QString result = "FAILURE";
+   myError("Staring Job on DesignSafe");
 
    //
    // invoke the function by calling the cli externally
@@ -414,10 +547,13 @@ AgaveCLI::startJob(const QString &jobDescriptionFile)
         QJsonObject jsonObj = doc.object();
         if (jsonObj.contains("id"))
             result = jsonObj["id"].toString();
-        else
+        else {
+            myError("ARROR: AGAVE FOLKS CHANGED API .. contact SimCenter");
             result = "ERROR: Agave FOLKS CHANGED API";
+            return result;
+        }
 
-
+    myError("");
     return result;
 }
 
@@ -432,7 +568,7 @@ AgaveCLI::startJob(const QJsonObject &theJob)
 
     QFile file2(uniqueFileName2);
     if (!file2.open(QFile::WriteOnly | QFile::Text)) {
-      myError("ERROR: COULD NOT OPEN TEMP FILE TO WRATE JSON");
+      myError("ERROR: COULD NOT OPEN TEMP FILE TO WRITE JSON");
       return result;
     }
 
@@ -442,64 +578,12 @@ AgaveCLI::startJob(const QJsonObject &theJob)
 
     // invoke previos method & return
     return this->startJob(uniqueFileName2);
-
- #ifdef Q_OS_WIN
-     //  QString command = QString("python ") + pySCRIPT + QString(" ") + tDirectory + QString(" ") + tmpDirectory;
-     //  proc->execute("cmd", QStringList() << "/C" << command);
- #else
-    QString command = QString("source $HOME/.bashrc; jobs-submit -v -F ") + uniqueFileName2 + QString(" > ") + uniqueFileName1;
-    proc->execute("bash", QStringList() << "-c" <<  command);
-     qDebug() << command;
- #endif
-
-     // wait till done  &then restore application to interactive state
-    proc->waitForFinished(-1);
-    QApplication::restoreOverrideCursor();
-
-     // open results file
-     QFile file(uniqueFileName1);
-     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-       result = false;
-       myError("ERROR: COULD NOT OPEN RESULT");
-       return result;
-     }
-
-     // read results file & check for errors
-     QString val;
-     val=file.readAll();
-     file.close();
-
-     if (val.contains("Invalid Credentals")) {
-        result = false;
-        myError("ERROR: NEED TO LOGIN");
-        return result;
-     }
-     if (val.contains("does not exist")) {
-        result = false;
-        myError("ERROR: remote dir does not exist");
-        return result;
-     }
-     if (val.contains("Invalid authentication credentials")) {
-        result = false;
-        myError("ERROR: user does not have access to remote dir");
-        return result;
-     }
-
-     // sucessfull submission, go get jobID
-     QJsonDocument doc = QJsonDocument::fromJson(val.toUtf8());
-         QJsonObject jsonObj = doc.object();
-         if (jsonObj.contains("id"))
-             result = jsonObj["id"].toString();
-         else
-             result = "ERROR: Either Agave FOLKS CHANGED API or YOU Failed to create auth token";
-
-     return result;
-     // open results file
 }
 
 QJsonObject
 AgaveCLI::getJobList(const QString &matchingName)
 {
+    myError("Getting List of Jobs from DesignSafe");
     QJsonObject result;
 
     //
@@ -553,12 +637,14 @@ AgaveCLI::getJobList(const QString &matchingName)
     //QJsonObject jsonObj = doc.object();
     result = doc.object();
 
+    myError("");
     return result;
 }
 
 QJsonObject
 AgaveCLI::getJobDetails(const QString &jobID)
 {
+     myError("Getting Job Details from DesignSafe");
     QJsonObject result;
 
     //
@@ -610,12 +696,14 @@ AgaveCLI::getJobDetails(const QString &jobID)
     //QJsonObject jsonObj = doc.object();
     result = doc.object();
 
+    myError("");
     return result;
 }
 
 QString
 AgaveCLI::getJobStatus(const QString &jobID){
     QString result("OOPS!");
+    myError("Getting Job Status from DesignSafe");
 
     //
     // invoke the function by calling the cli externally
@@ -662,7 +750,7 @@ AgaveCLI::getJobStatus(const QString &jobID){
     }
 
     result = val;
-    qDebug() << result;
+    myError("");
 
     return result;
 }
@@ -671,7 +759,7 @@ bool
 AgaveCLI::deleteJob(const QString &jobID)
 {
    bool result = false;
-
+   myError("Deleting Job from DesignSafe");
    //
    // invoke the function by calling the cli externally
    //
@@ -724,6 +812,7 @@ AgaveCLI::deleteJob(const QString &jobID)
     // if get here it worked .. result true
     result = true;
 
+    myError("");
     return result;
 }
 
@@ -750,8 +839,6 @@ AgaveCLI::invokeAgaveCLI(const QString &command)
     proc->waitForFinished(-1);
 
     QByteArray processOutput = proc->readAllStandardError();
-    //qDebug() << processOutput;
-    //qDebug() << proc->error();
 
     // return full control to UI
     QApplication::restoreOverrideCursor();
