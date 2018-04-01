@@ -1,5 +1,5 @@
-#ifndef AGAVE_CLI_H
-#define AGAVE_CLI_H
+#ifndef AGAVE_CURL_H
+#define AGAVE_CURL_H
 
 /* *****************************************************************************
 Copyright (c) 2016-2017, The Regents of the University of California (Regents).
@@ -37,14 +37,20 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 *************************************************************************** */
 
-// Written: fmckenna
-
-// Purpose: To interface with Agave through the command line interface routines. This
-// requires that these routines be downloaded and installled on user desktop/laptop.
-
+/** 
+ *  @author  fmckenna
+ *  @date    2/2017
+ *  @version 1.0 
+ *  
+ *  @section DESCRIPTION
+ *  
+ *  This is a concrete implementation of the AgaveInterface. It implements the
+ *  interface by invoking the Agave cli bash scripts.
+ */
 
 #include <QObject>
 #include "AgaveInterface.h"
+#include <curl/curl.h>
 
 class QProcess;
 class QWidget;
@@ -52,24 +58,29 @@ class QLineEdit;
 
 //typedef void (*errorFunc)(const QString &message);
 
-class AgaveCLI : public AgaveInterface
+class AgaveCurl : public AgaveInterface
 {
         Q_OBJECT
 
 public:
 
-    explicit AgaveCLI(QString &tenant, QString &storage, QObject *parent = nullptr);
-    ~AgaveCLI();
+    explicit AgaveCurl(QString &tenant, QString &storage, QObject *parent = nullptr);
+    ~AgaveCurl();
 
     // method to login
     bool login();
+    bool login(const QString &login, const QString &password);
     bool logout();
     bool isLoggedIn();
 
     // methods needed for file/dir operations
-    bool uploadDirectory(const QString &local, const QString &remote);
-    bool removeDirectory(const QString &remote);
+    bool mkdir(const QString &remoteName, const     QString &remotePath);
+    bool uploadFile(const QString &local, const QString &remote);
     bool downloadFile(const QString &remote, const QString &local);
+    bool uploadDirectory(const QString &local, const QString &remote);
+    bool downloaDirectory(const QString &remote, const QString &local);
+    bool removeDirectory(const QString &remote);
+
     virtual QString getHomeDirPath(void);
 
     // methods needed to start a job
@@ -89,9 +100,8 @@ public slots:
 
 private:
     // private methods
-    bool invokeAgaveCLI(const QString & command);
-    bool login(const QString &login, const QString &password);
-    void myError(const QString &msg);
+    bool invokeCurl(void);
+
 
     // variable thet are Agave specific
     QString tenant;
@@ -111,6 +121,13 @@ private:
     QLineEdit *passwordLineEdit;
     int numTries;
    // errorFunc errorFunction;
+
+    CURL *hnd;
+    struct curl_slist *slist1;
+
+    QString tenantURL;
+    QString appClient;
+
 };
 
-#endif // AGAVE_CLI_H
+#endif // AGAVE_CURL_H

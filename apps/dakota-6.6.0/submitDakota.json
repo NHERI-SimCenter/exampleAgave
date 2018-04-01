@@ -14,7 +14,7 @@
       "modules":"petsc"
     },
     "inputs": {
-      "inputDirectory": "agave://designsafe.storage.default/tg457427/testDakota"
+      "inputDirectory": "agave://designsafe.storage.default/tg457427/tmp.SimCenterbe25e12f-195b-481e-81a3-4136ecccfd39"
     },
     "notifications": [
       {

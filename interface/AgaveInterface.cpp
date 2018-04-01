@@ -1,6 +1,3 @@
-#ifndef AGAVE_CLI_H
-#define AGAVE_CLI_H
-
 /* *****************************************************************************
 Copyright (c) 2016-2017, The Regents of the University of California (Regents).
 All rights reserved.
@@ -37,80 +34,10 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 *************************************************************************** */
 
-// Written: fmckenna
 
-// Purpose: To interface with Agave through the command line interface routines. This
-// requires that these routines be downloaded and installled on user desktop/laptop.
-
-
-#include <QObject>
 #include "AgaveInterface.h"
 
-class QProcess;
-class QWidget;
-class QLineEdit;
-
-//typedef void (*errorFunc)(const QString &message);
-
-class AgaveCLI : public AgaveInterface
+AgaveInterface::AgaveInterface(QObject *obj)
+:QObject(obj)
 {
-        Q_OBJECT
-
-public:
-
-    explicit AgaveCLI(QString &tenant, QString &storage, QObject *parent = nullptr);
-    ~AgaveCLI();
-
-    // method to login
-    bool login();
-    bool logout();
-    bool isLoggedIn();
-
-    // methods needed for file/dir operations
-    bool uploadDirectory(const QString &local, const QString &remote);
-    bool removeDirectory(const QString &remote);
-    bool downloadFile(const QString &remote, const QString &local);
-    virtual QString getHomeDirPath(void);
-
-    // methods needed to start a job
-    QString startJob(const QString &jobDescription);
-    QString startJob(const QJsonObject &theJob);
-
-    // methods neeed for dealing with remote jobs
-    QJsonObject getJobList(const QString &matchingName);
-    QJsonObject getJobDetails(const QString &jobID);
-    QString getJobStatus(const QString &jobID);
-    bool deleteJob(const QString &jobID);
-
-signals:
-
-public slots:
-    void loginSubmitButtonClicked(void);
-
-private:
-    // private methods
-    bool invokeAgaveCLI(const QString & command);
-    bool login(const QString &login, const QString &password);
-    void myError(const QString &msg);
-
-    // variable thet are Agave specific
-    QString tenant;
-    QString storage;
-
-    // need two unique file names, use these for temp storage while running
-    QString uniqueFileName1;
-    QString uniqueFileName2;
-
-    // process we use to invoke cli calls
-    QProcess *proc;     // process we use to invoke the cli calls
-
-    // variables for login & login widget
-    bool loggedInFlag;
-    QWidget *loginWindow;
-    QLineEdit *nameLineEdit;
-    QLineEdit *passwordLineEdit;
-    int numTries;
-   // errorFunc errorFunction;
-};
-
-#endif // AGAVE_CLI_H
+}

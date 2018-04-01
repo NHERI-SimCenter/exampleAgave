@@ -62,20 +62,10 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include <QUuid>
 
-using namespace std;
+//using namespace std;
 
-void
-AgaveCLI::myError(const QString  &msg) {
-
-    if (errorFunction != 0)
-        (*errorFunction)(msg);
-    else
-        qDebug() << msg;
-}
-
-
-AgaveCLI::AgaveCLI(errorFunc func, QObject *parent)
-    :QObject(parent), loggedInFlag(false), errorFunction(func)
+AgaveCLI::AgaveCLI(QString &_tenant, QString &_storage, QObject *parent)
+    :AgaveInterface(parent), tenant(_tenant), storage(_storage), loggedInFlag(false)
 {
     //
     // for operation the class needs two temporary files to function
@@ -141,7 +131,7 @@ AgaveCLI::AgaveCLI(errorFunc func, QObject *parent)
     loginLayout->addWidget(submitButton,2,2);
     loginWindow->setLayout(loginLayout);
 
-    // connect the logins submit button clicked signal with the code to login
+    // connect the login submit button clicked signal with the code to actually login
     connect(submitButton,SIGNAL(clicked(bool)),this,SLOT(loginSubmitButtonClicked()));
 }
 
@@ -236,8 +226,8 @@ AgaveCLI::login(const QString &login, const QString &password)
 {
     bool result = false;
 
-    // make sure tenants set to designsafe
-    QString command = QString("tenants-¬init -t designsafe ") +
+    // make sure tenants set correctly
+    QString command = QString("tenants-¬init -t ") + tenant + 
              QString(" > ") + uniqueFileName1;
     this->invokeAgaveCLI(command);
 
@@ -267,10 +257,10 @@ AgaveCLI::login(const QString &login, const QString &password)
 
     if (val.contains("Invalid Credentals") || val.isEmpty()) {
         result = false;
-        this->myError("BAD username and/or password");
+        emit sendErrorMessage(QString("BAD username and/or password"));
     } else if (val.contains("successfully refreshed")) {
         result = true;
-        this->myError("");
+        emit sendErrorMessage("");
     }
 
     return result;
@@ -280,7 +270,8 @@ AgaveCLI::login(const QString &login, const QString &password)
 QString
 AgaveCLI::getHomeDirPath(void){
 
-    QString result = QString("agave://designsafe.storage.default/") + nameLineEdit->text();
+   // QString result = QString("agave://designsafe.storage.default/") + nameLineEdit->text();
+    QString result = storage + nameLineEdit->text();
     return result;
 }
 
@@ -288,7 +279,6 @@ AgaveCLI::getHomeDirPath(void){
 bool
 AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
 {
-
     bool result = true;
 
     // for upload we need to remove he agave storage URL
@@ -304,7 +294,7 @@ AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         result = false;
-        this->myError("ERROR: COULD NOT RUN AGAVE-CLI COMMAND");
+        emit sendErrorMessage("ERROR: COULD NOT RUN AGAVE-CLI COMMAND");
         return result;
     }
 
@@ -315,13 +305,13 @@ AgaveCLI::uploadDirectory(const QString &local, const QString &remote)
 
     if (val.contains("Invalid Credentals")) {
         result = false;
-        myError("ERROR: YOU NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: YOU NEED TO LOGIN");
     } else if (val.contains("does not exist")) {
         result = false;
-        myError("ERROR: remote dir does not exist");
+        emit sendErrorMessage("ERROR: remote dir does not exist");
     } else if (val.contains("Invalid authentication credentials")) {
         result = false;
-        myError("ERROR: user does not have access to remote dir");
+        emit sendErrorMessage("ERROR: user does not have access to remote dir");
     }
 
     return result;
@@ -332,7 +322,7 @@ bool
 AgaveCLI::removeDirectory(const QString &remote)
 {
     bool result = true;
-    myError("Removing Directory from DesignSafe");
+    emit sendErrorMessage("Removing Directory from DesignSafe");
 
     QString command = QString("files-delete -v ")  + remote + QString(" > ") + uniqueFileName1;
     this->invokeAgaveCLI(command);
@@ -345,7 +335,7 @@ AgaveCLI::removeDirectory(const QString &remote)
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         result = false;
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -356,21 +346,21 @@ AgaveCLI::removeDirectory(const QString &remote)
 
     if (val.contains("Invalid Credentals")) {
         result = false;
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
     if (val.contains("does not exist")) {
         result = false;
-        myError("ERROR: remote dir does not exist");
+        emit sendErrorMessage("ERROR: remote dir does not exist");
         return result;
     }
     if (val.contains("Invalid authentication credentials")) {
         result = false;
-        myError("ERROR: user does not have access to remote dir");
+        emit sendErrorMessage("ERROR: user does not have access to remote dir");
         return result;
     }
 
-    myError("");
+    emit sendErrorMessage("");
     return result;
 }
 
@@ -391,7 +381,7 @@ AgaveCLI::downloadFile(const QString &remote, const QString &local)
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         result = false;
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -402,22 +392,22 @@ AgaveCLI::downloadFile(const QString &remote, const QString &local)
 
     if (val.contains("Invalid Credentals")) {
         result = false;
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
     if (val.contains("does not exist")) {
         result = false;
-        myError("ERROR: remote dir does not exist");
+        emit sendErrorMessage("ERROR: remote dir does not exist");
         return result;
     }
     if (val.contains("Invalid authentication credentials")) {
         result = false;
-        myError("ERROR: user does not have access to remote dir");
+        emit sendErrorMessage("ERROR: user does not have access to remote dir");
         return result;
     }
     if (val.contains("Failed to create")) {
         result = false;
-        myError("ERROR: User Gave wrong local name");
+        emit sendErrorMessage("ERROR: User Gave wrong local name");
         return result;
     }
 
@@ -441,7 +431,7 @@ AgaveCLI::startJob(const QString &jobDescriptionFile)
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         result = false;
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -452,17 +442,17 @@ AgaveCLI::startJob(const QString &jobDescriptionFile)
 
     if (val.contains("Invalid Credentals")) {
         result = false;
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
     if (val.contains("does not exist")) {
         result = false;
-        myError("ERROR: remote dir does not exist");
+        emit sendErrorMessage("ERROR: remote dir does not exist");
         return result;
     }
     if (val.contains("Invalid authentication credentials")) {
         result = false;
-        myError("ERROR: user does not have access to remote dir");
+        emit sendErrorMessage("ERROR: user does not have access to remote dir");
         return result;
     }
 
@@ -472,7 +462,7 @@ AgaveCLI::startJob(const QString &jobDescriptionFile)
     if (jsonObj.contains("id"))
         result = jsonObj["id"].toString();
     else {
-        myError("ARROR: AGAVE FOLKS CHANGED API .. contact SimCenter");
+        emit sendErrorMessage("ARROR: AGAVE FOLKS CHANGED API .. contact SimCenter");
         result = "ERROR: Agave FOLKS CHANGED API";
         return result;
     }
@@ -491,7 +481,7 @@ AgaveCLI::startJob(const QJsonObject &theJob)
 
     QFile file2(uniqueFileName2);
     if (!file2.open(QFile::WriteOnly | QFile::Text)) {
-        myError("ERROR: COULD NOT OPEN TEMP FILE TO WRITE JSON");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN TEMP FILE TO WRITE JSON");
         return result;
     }
 
@@ -506,7 +496,7 @@ AgaveCLI::startJob(const QJsonObject &theJob)
 QJsonObject
 AgaveCLI::getJobList(const QString &matchingName)
 {
-    myError("Getting List of Jobs from DesignSafe");
+    emit sendErrorMessage("Getting List of Jobs from DesignSafe");
     QJsonObject result;
 
     QString command = QString("jobs-list -v ") + QString(" > ") + uniqueFileName1;
@@ -519,7 +509,7 @@ AgaveCLI::getJobList(const QString &matchingName)
     // open results file
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -529,7 +519,7 @@ AgaveCLI::getJobList(const QString &matchingName)
     file.close();
 
     if (val.contains("Invalid Credentals")) {
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
 
@@ -545,7 +535,7 @@ AgaveCLI::getJobList(const QString &matchingName)
 QJsonObject
 AgaveCLI::getJobDetails(const QString &jobID)
 {
-    myError("Getting Job Details from DesignSafe");
+    emit sendErrorMessage("Getting Job Details from DesignSafe");
     QJsonObject result;
 
     QString command = QString("jobs-list -v ") + jobID + QString(" > ") + uniqueFileName1;
@@ -558,7 +548,7 @@ AgaveCLI::getJobDetails(const QString &jobID)
     // open results file
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -568,7 +558,7 @@ AgaveCLI::getJobDetails(const QString &jobID)
     file.close();
 
     if (val.contains("Invalid Credentals")) {
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
 
@@ -585,8 +575,6 @@ AgaveCLI::getJobDetails(const QString &jobID)
 QString
 AgaveCLI::getJobStatus(const QString &jobID){
     QString result("OOPS!");
-    myError("Getting Job Status from DesignSafe");
-
 
     QString command = QString("jobs-status ") + jobID + QString(" > ") + uniqueFileName1;
     if (this->invokeAgaveCLI(command) == false) {
@@ -599,7 +587,7 @@ AgaveCLI::getJobStatus(const QString &jobID){
 
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -608,11 +596,11 @@ AgaveCLI::getJobStatus(const QString &jobID){
     val=file.readAll();
     file.close();
     if (val.contains("Invalid Credentals")) {
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
     if (val.contains("Not job found")) {
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
 
@@ -638,7 +626,7 @@ AgaveCLI::deleteJob(const QString &jobID)
     // open results file
     QFile file(uniqueFileName1);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        myError("ERROR: COULD NOT OPEN RESULT");
+        emit sendErrorMessage("ERROR: COULD NOT OPEN RESULT");
         return result;
     }
 
@@ -647,11 +635,11 @@ AgaveCLI::deleteJob(const QString &jobID)
     val=file.readAll();
     file.close();
     if (val.contains("Invalid Credentals")) {
-        myError("ERROR: NEED TO LOGIN");
+        emit sendErrorMessage("ERROR: NEED TO LOGIN");
         return result;
     }
     if (val.contains("No job found")) {
-        myError("ERROR: No job found!");
+        emit sendErrorMessage("ERROR: No job found!");
         return result;
     }
 
